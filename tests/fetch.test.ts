@@ -7,6 +7,29 @@ const botText = `幣別 匯率 現金 即期 c4 c5 c6 c7 c8 c9 c10 匯率 現金
 USD 本行買入 31.4 31.7 - - - - - - - 本行賣出 32.1 31.9`
 
 describe("provider requests", () => {
+  test("does not load impit when a custom fetch is provided", async () => {
+    vi.resetModules()
+    vi.doMock("impit", () => {
+      throw new Error("native binding unavailable")
+    })
+
+    try {
+      const library = await import("../src/index.js")
+      const mockFetch = vi.fn(async () => new Response(botText))
+      const rates = await library.fetchRates(undefined, {
+        fetch: mockFetch,
+        now: () => fetchedAt,
+      })
+
+      assert.equal(mockFetch.mock.calls.length, 1)
+      assert.equal(rates[0]?.exchange, "BANK_OF_TAIWAN")
+      await expect(library.fetchRates()).rejects.toThrow()
+    } finally {
+      vi.doUnmock("impit")
+      vi.resetModules()
+    }
+  })
+
   test("uses Bank of Taiwan as the default source", async () => {
     const mockFetch = vi.fn(async () => new Response(botText))
     const rates = await fetchRates(undefined, { fetch: mockFetch, now: () => fetchedAt })
