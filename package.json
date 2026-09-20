@@ -34,12 +34,12 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.13",
+    "@biomejs/biome": "^2.5.14",
     "@changesets/cli": "^3.0.3",
     "@types/node": "^26.6.2",
     "husky": "^9.1.7",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.1"
   },
   "dependencies": {
     "cheerio": "^1.2.0",
