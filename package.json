@@ -15,6 +15,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./history": {
+      "types": "./dist/history.d.ts",
+      "import": "./dist/history.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
     }
   },
   "files": [
@@ -28,7 +36,10 @@
     "start": "node dist/cli.js",
     "check": "biome ci .",
     "test": "vitest run",
-    "ci": "npm run check && npm test && npm run build",
+    "docs:check": "node scripts/check-doc-links.mjs README.md docs/providers.md docs/history-and-alerts.md docs/http-api.md",
+    "package:smoke": "npm run build && node scripts/package-smoke.mjs",
+    "smoke": "npm run build && node scripts/smoke.mjs",
+    "ci": "npm run check && npm test && npm run build && npm run docs:check",
     "changeset": "changeset",
     "release": "npm run build && changeset publish",
     "prepare": "husky"
@@ -39,7 +50,8 @@
     "@types/node": "^26.6.2",
     "husky": "^9.1.7",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.1"
+    "vite": "^6.4.3",
+    "vitest": "^4.1.11"
   },
   "dependencies": {
     "cheerio": "^1.2.0",

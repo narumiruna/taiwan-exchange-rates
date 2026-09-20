@@ -20,6 +20,7 @@ import {
   parseYuantaBankRates,
 } from "./parsers.js"
 import type { Exchange, FetchRatesOptions, Rate, RateFetch, RateFetchResponse } from "./types.js"
+import { banks } from "./types.js"
 
 type Context = Readonly<{
   fetchedAt: Date
@@ -79,7 +80,7 @@ const providers: Record<Exchange, Provider> = {
   LINE_BANK: async (context) =>
     parseLineBankRates(
       await requestText(
-        "https://www.linebank.com.tw/board-rate/exchange-rate",
+        bankRateUrl("LINE_BANK"),
         { headers: { "User-Agent": userAgent } },
         context.options,
       ),
@@ -87,7 +88,7 @@ const providers: Record<Exchange, Provider> = {
     ),
   HSBC_BANK: async (context) =>
     parseHsbcRates(
-      await requestText("https://www.hsbc.com.tw/currency-rates/", {}, context.options),
+      await requestText(bankRateUrl("HSBC_BANK"), {}, context.options),
       context.fetchedAt,
     ),
   NEXT_BANK: async (context) =>
@@ -102,21 +103,12 @@ const providers: Record<Exchange, Provider> = {
     ),
   KGI_BANK: async (context) =>
     parseKgiRates(
-      await requestText(
-        "https://www.kgibank.com.tw/zh-tw/personal/interest-rate/fx",
-        {},
-        context.options,
-      ),
+      await requestText(bankRateUrl("KGI_BANK"), {}, context.options),
       context.fetchedAt,
     ),
   CATHAY_BANK: async (context) =>
     parseCathayRates(
-      await requestText(
-        "https://www.cathaybk.com.tw/cathaybk/personal/product/deposit/currency-billboard/",
-        {},
-        context.options,
-        true,
-      ),
+      await requestText(bankRateUrl("CATHAY_BANK"), {}, context.options, true),
       context.fetchedAt,
     ),
   MEGA_BANK: async (context) => {
@@ -130,17 +122,13 @@ const providers: Record<Exchange, Provider> = {
   },
   FIRST_BANK: async (context) =>
     parseFirstBankRates(
-      await requestText(
-        "https://www.firstbank.com.tw/sites/fcb/touch/1565688252532",
-        {},
-        context.options,
-      ),
+      await requestText(bankRateUrl("FIRST_BANK"), {}, context.options),
       context.fetchedAt,
     ),
   LAND_BANK: async (context) =>
     parseLandBankRates(
       await requestText(
-        "https://rate.landbank.com.tw/zh-TW/Foreign?mid=35",
+        bankRateUrl("LAND_BANK"),
         { headers: { "User-Agent": userAgent } },
         context.options,
         true,
@@ -150,7 +138,7 @@ const providers: Record<Exchange, Provider> = {
   YUANTA_BANK: async (context) =>
     parseYuantaBankRates(
       await requestText(
-        "https://www.yuantabank.com.tw/bank/exchangeRate/hostccy.do",
+        bankRateUrl("YUANTA_BANK"),
         { headers: { "Accept-Language": "zh-TW,zh;q=0.9", "User-Agent": userAgent } },
         context.options,
       ),
@@ -195,11 +183,7 @@ export async function fetchRates(
 }
 
 async function fetchCooperativeBankRates(context: Context): Promise<Rate[]> {
-  const pageResponse = await request(
-    "https://www.tcb-bank.com.tw/personal-banking/deposit-exchange/exchange-rate/spot",
-    {},
-    context.options,
-  )
+  const pageResponse = await request(bankRateUrl("COOPERATIVE_BANK"), {}, context.options)
   const token = extractCooperativeBankToken(await pageResponse.text())
   const cookie = (pageResponse.headers?.getSetCookie() ?? [])
     .map((value) => value.split(";", 1)[0])
@@ -218,6 +202,12 @@ async function fetchCooperativeBankRates(context: Context): Promise<Rate[]> {
     context.options,
   )
   return parseCooperativeBankRates(payload, context.fetchedAt)
+}
+
+function bankRateUrl(exchange: Exchange): string {
+  const url = banks.find((bank) => bank.exchange === exchange)?.rateUrl
+  if (!url) throw new Error(`Missing rate URL for ${exchange}`)
+  return url
 }
 
 async function requestJson(
