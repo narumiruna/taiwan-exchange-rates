@@ -44,6 +44,7 @@ const status = document.querySelector("#status")
 const ratesBody = document.querySelector("#rates tbody")
 const historyBody = document.querySelector("#history tbody")
 const historySection = document.querySelector("#history-section")
+let requestGeneration = 0
 
 function parameters() {
   const data = new FormData(form)
@@ -70,13 +71,16 @@ async function request(path) {
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault()
+  const generation = ++requestGeneration
   status.removeAttribute("role")
   status.className = ""
   status.textContent = "載入中…"
   ratesBody.replaceChildren()
   try {
-    const body = await request("/api/rates?" + parameters())
-    const rateType = document.querySelector("#type").value
+    const params = parameters()
+    const rateType = params.get("type")
+    const body = await request("/api/rates?" + params)
+    if (generation !== requestGeneration) return
     for (const rate of body.rates) {
       const row = document.createElement("tr")
       cell(row, rate.exchange)
@@ -88,17 +92,22 @@ form.addEventListener("submit", async (event) => {
     status.textContent = body.failures.length ? body.failures.length + " 家銀行查詢失敗，其餘結果仍可使用。" : "查詢完成"
     if (body.failures.length) status.className = "warning"
   } catch (error) {
+    if (generation !== requestGeneration) return
     status.setAttribute("role", "alert")
     status.textContent = error instanceof Error ? error.message : String(error)
   }
 })
 
 document.querySelector("#history-button").addEventListener("click", async () => {
+  const generation = ++requestGeneration
+  status.removeAttribute("role")
+  status.className = ""
   status.textContent = "載入歷史…"
   historyBody.replaceChildren()
   try {
     const rateType = document.querySelector("#type").value
     const body = await request("/api/history?currency=" + encodeURIComponent(document.querySelector("#currency").value.toUpperCase()))
+    if (generation !== requestGeneration) return
     for (const record of body.records) {
       for (const rate of record.rates) {
         const row = document.createElement("tr")
@@ -112,6 +121,7 @@ document.querySelector("#history-button").addEventListener("click", async () => 
     historySection.hidden = false
     status.textContent = "歷史載入完成"
   } catch (error) {
+    if (generation !== requestGeneration) return
     status.setAttribute("role", "alert")
     status.textContent = error instanceof Error ? error.message : String(error)
   }

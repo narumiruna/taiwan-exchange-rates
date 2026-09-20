@@ -20,7 +20,7 @@ import {
   fetchRates,
   queryRates,
 } from "./index.js"
-import { formatRates, type OutputFormat } from "./output.js"
+import { formatHistoryTable, formatRates, type OutputFormat } from "./output.js"
 
 const aliases: Readonly<Record<string, Exchange>> = {
   bot: "BANK_OF_TAIWAN",
@@ -249,6 +249,7 @@ async function runHistory(
     until: values.until,
   })
   if (settings.format === "json") output.log(JSON.stringify(records, null, 2))
+  else if (settings.format === "table") output.log(formatHistoryTable(records, settings))
   else
     output.log(
       formatRates(

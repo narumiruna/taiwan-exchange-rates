@@ -1,10 +1,12 @@
 import assert from "node:assert/strict"
-import { access, mkdtemp } from "node:fs/promises"
+import { access, mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, test, vi } from "vitest"
 import { resolveExchange, runCli } from "../src/cli.js"
+import { appendHistory, createHistoryRecord } from "../src/history.js"
 import type { Rate } from "../src/index.js"
+import { formatCsv } from "../src/output.js"
 
 const usdRate: Rate = {
   exchange: "BANK_OF_TAIWAN",
@@ -209,6 +211,43 @@ describe("CLI", () => {
     const absent = join(directory, "absent.jsonl")
     assert.equal(await runCli(["USD"], captureOutput().output, api), 0)
     await expect(access(absent)).rejects.toMatchObject({ code: "ENOENT" })
+  })
+
+  test("preserves snapshot timestamps and ordering in default history tables", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "twrate-cli-snapshots-"))
+    const historyFile = join(directory, "rates.jsonl")
+    const snapshots = [
+      createHistoryRecord([usdRate], { now: () => new Date("2026-09-20T13:00:00Z") }),
+      createHistoryRecord([{ ...usdRate, spotSell: 33 }], {
+        now: () => new Date("2026-09-20T14:00:00Z"),
+      }),
+    ]
+    try {
+      for (const snapshot of snapshots) await appendHistory(historyFile, snapshot)
+      const args = ["history", "USD", "--history-file", historyFile]
+      const table = captureOutput()
+      assert.equal(await runCli(args, table.output, api), 0)
+      const sections = (table.logs[0] ?? "").split("Recorded at: ").slice(1)
+      assert.equal(sections.length, 2)
+      assert.ok(sections[0]?.startsWith("2026-09-20T13:00:00.000Z"))
+      assert.match(sections[0] ?? "", /32\.0000/)
+      assert.ok(sections[1]?.startsWith("2026-09-20T14:00:00.000Z"))
+      assert.match(sections[1] ?? "", /33\.0000/)
+
+      const limited = captureOutput()
+      assert.equal(await runCli([...args, "--limit", "1"], limited.output, api), 0)
+      assert.match(limited.logs[0] ?? "", /2026-09-20T14:00:00.000Z/)
+      assert.doesNotMatch(limited.logs[0] ?? "", /2026-09-20T13:00:00.000Z/)
+
+      const json = captureOutput()
+      assert.equal(await runCli([...args, "--format", "json"], json.output, api), 0)
+      assert.deepEqual(JSON.parse(json.logs[0] ?? "[]"), snapshots)
+      const csv = captureOutput()
+      assert.equal(await runCli([...args, "--format", "csv"], csv.output, api), 0)
+      assert.equal(csv.logs[0], formatCsv(snapshots.flatMap((snapshot) => snapshot.rates)))
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
   })
 
   test("evaluates alert thresholds and exit codes", async () => {

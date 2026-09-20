@@ -1,7 +1,8 @@
 import assert from "node:assert/strict"
 import { describe, test } from "vitest"
+import { createHistoryRecord } from "../src/history.js"
 import type { Rate } from "../src/index.js"
-import { formatCsv, formatRates } from "../src/output.js"
+import { formatCsv, formatHistoryTable, formatRates } from "../src/output.js"
 
 const rates: Rate[] = [
   {
@@ -29,6 +30,24 @@ describe("rate output", () => {
     assert.match(output, /JPY\/TWD/)
     assert.match(output, /顧客買入即期/)
     assert.match(output, /-\t-/)
+  })
+
+  test("groups currencies under each history timestamp and handles empty history", () => {
+    const snapshots = [
+      createHistoryRecord(rates, { now: () => new Date("2026-09-20T13:00:00Z") }),
+      createHistoryRecord(rates, { now: () => new Date("2026-09-20T14:00:00Z") }),
+    ]
+    const sections = formatHistoryTable(snapshots, { action: "buy", rateType: "cash" })
+      .split("Recorded at: ")
+      .slice(1)
+    assert.equal(sections.length, 2)
+    for (const [index, section] of sections.entries()) {
+      assert.ok(section.startsWith(snapshots[index]?.recordedAt ?? "missing"))
+      assert.match(section, /USD\/TWD/)
+      assert.match(section, /JPY\/TWD/)
+      assert.match(section, /顧客買入現鈔/)
+    }
+    assert.equal(formatHistoryTable([]), "")
   })
 
   test("renders flat JSON", () => {

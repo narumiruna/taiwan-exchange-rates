@@ -1,3 +1,4 @@
+import type { HistoryRecord } from "./history.js"
 import type { CustomerAction } from "./query.js"
 import { groupRates } from "./query.js"
 import { cashSpread, spotSpread } from "./rates.js"
@@ -19,6 +20,17 @@ export function formatRates(
   if (format === "csv") return formatCsv(rates)
   return [...groupRates(rates)]
     .map(([source, group]) => formatTable(source, group, options))
+    .join("\n\n")
+}
+
+export function formatHistoryTable(
+  records: readonly HistoryRecord[],
+  options: FormatRatesOptions = {},
+): string {
+  return records
+    .map((record) =>
+      [`Recorded at: ${record.recordedAt}`, formatRates(record.rates, "table", options)].join("\n"),
+    )
     .join("\n\n")
 }
 
