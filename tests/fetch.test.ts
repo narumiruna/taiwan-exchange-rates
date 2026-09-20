@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, expect, test, vi } from "vitest"
-import { fetchAllRates, fetchRates } from "../src/index.js"
+import { fetchAllRates, fetchAllRatesDetailed, fetchRates } from "../src/index.js"
 
 const fetchedAt = new Date("2026-09-20T12:00:00.000Z")
 const botText = `幣別 匯率 現金 即期 c4 c5 c6 c7 c8 c9 c10 匯率 現金 即期
@@ -79,6 +79,26 @@ describe("provider requests", () => {
 
     assert.equal(rates[0]?.exchange, "BANK_OF_TAIWAN")
     assert.deepEqual(failures, ["DBS_BANK"])
+  })
+
+  test("returns structured failures and keeps the onError callback", async () => {
+    const callbacks: string[] = []
+    const result = await fetchAllRatesDetailed({
+      exchanges: ["BANK_OF_TAIWAN", "DBS_BANK"],
+      fetch: async (input) =>
+        String(input).includes("dbs.com.tw")
+          ? new Response("unavailable", { status: 503 })
+          : new Response(botText),
+      now: () => fetchedAt,
+      onError: (exchange) => callbacks.push(exchange),
+    })
+
+    assert.equal(result.rates[0]?.exchange, "BANK_OF_TAIWAN")
+    assert.deepEqual(
+      result.failures.map((failure) => failure.exchange),
+      ["DBS_BANK"],
+    )
+    assert.deepEqual(callbacks, ["DBS_BANK"])
   })
 
   test("rejects unsuccessful HTTP responses", async () => {

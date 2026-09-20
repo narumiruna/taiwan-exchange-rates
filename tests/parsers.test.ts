@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import { describe, expect, test } from "vitest"
+import type { Exchange, Rate } from "../src/index.js"
 import {
   extractCooperativeBankToken,
   parseBankOfTaiwanRates,
@@ -27,7 +28,9 @@ USD 本行買入 31.40000 31.72500 - - - - - - - 本行賣出 32.07000 31.87500`
 
 describe("API response parsers", () => {
   test("parses the Bank of Taiwan text board defensively", () => {
-    assert.deepEqual(parseBankOfTaiwanRates(botText, fetchedAt)[0], {
+    const rates = parseBankOfTaiwanRates(botText, fetchedAt)
+    assertRateContract(rates, "BANK_OF_TAIWAN")
+    assert.deepEqual(rates[0], {
       cashBuy: 31.4,
       cashSell: 32.07,
       exchange: "BANK_OF_TAIWAN",
@@ -48,7 +51,9 @@ describe("API response parsers", () => {
         SubInfo: [{ DataValue2: buy, DataValue3: sell, DataValue4: "USD" }],
       },
     ]
-    const usd = parseSinopacRates(payload("31.7", "31.9"), payload("31.4", "32.1"), fetchedAt)[0]
+    const rates = parseSinopacRates(payload("31.7", "31.9"), payload("31.4", "32.1"), fetchedAt)
+    assertRateContract(rates, "BANK_SINOPAC")
+    const usd = rates[0]
     assert.deepEqual(usd, {
       cashBuy: 31.4,
       cashSell: 32.1,
@@ -80,6 +85,8 @@ describe("API response parsers", () => {
       },
       fetchedAt,
     )
+    assertRateContract(dbs, "DBS_BANK")
+    assertRateContract(esun, "ESUN_BANK")
     assert.equal(dbs[0]?.exchange, "DBS_BANK")
     assert.equal(dbs[0]?.spotBuy, 31)
     assert.equal(esun[0]?.source, "USD")
@@ -127,6 +134,11 @@ describe("API response parsers", () => {
       fetchedAt,
     )
 
+    assertRateContract(next, "NEXT_BANK")
+    assertRateContract(mega, "MEGA_BANK")
+    assertRateContract(taichung, "TAICHUNG_BANK")
+    assertRateContract(fubon, "FUBON_BANK")
+    assertRateContract(cooperative, "COOPERATIVE_BANK")
     assert.equal(next[0]?.spotBuy, 31)
     assert.equal(next[0]?.spotSell, 32)
     for (const rates of [mega, taichung, cooperative]) {
@@ -152,6 +164,10 @@ describe("HTML response parsers", () => {
     const land = parseLandBankRates(fiveColumns, fetchedAt)
     const yuanta = parseYuantaBankRates(fiveColumns, fetchedAt)
 
+    assertRateContract(line, "LINE_BANK")
+    assertRateContract(hsbc, "HSBC_BANK")
+    assertRateContract(land, "LAND_BANK")
+    assertRateContract(yuanta, "YUANTA_BANK")
     assert.equal(line[0]?.spotBuy, 31)
     for (const rates of [hsbc, land, yuanta]) assert.equal(rates[0]?.cashSell, 33)
   })
@@ -164,6 +180,7 @@ describe("HTML response parsers", () => {
       </table>`,
       fetchedAt,
     )
+    assertRateContract(rates, "FIRST_BANK")
     assert.equal(rates[0]?.spotBuy, 31)
     assert.equal(rates[0]?.cashSell, 33)
   })
@@ -189,6 +206,8 @@ describe("HTML response parsers", () => {
       </div>`,
       fetchedAt,
     )
+    assertRateContract(kgi, "KGI_BANK")
+    assertRateContract(cathay, "CATHAY_BANK")
     for (const rates of [kgi, cathay]) assert.equal(rates[0]?.cashSell, 33)
   })
 
@@ -197,6 +216,7 @@ describe("HTML response parsers", () => {
       `document.writeln('<table><tr><th>即期買入</th><th>即期賣出</th><th>現鈔買入</th><th>現鈔賣出</th></tr><tr><td><a onclick="queryhistory(\\'USD\\')">USD</a></td><td>31</td><td>32</td><td>30</td><td>33</td></tr></table>');`,
       fetchedAt,
     )
+    assertRateContract(taishin, "TAISHIN_BANK")
     assert.equal(taishin[0]?.source, "USD")
     assert.equal(taishin[0]?.cashSell, 33)
     assert.equal(
@@ -217,3 +237,16 @@ describe("HTML response parsers", () => {
     ).toThrow("No Land Bank")
   })
 })
+
+function assertRateContract(rates: readonly Rate[], exchange: Exchange): void {
+  assert.ok(rates.length > 0)
+  for (const rate of rates) {
+    assert.equal(rate.exchange, exchange)
+    assert.equal(rate.target, "TWD")
+    assert.match(rate.source, /^[A-Z]{3}$/)
+    assert.equal(new Date(rate.fetchedAt).toISOString(), rate.fetchedAt)
+    const values = [rate.spotBuy, rate.spotSell, rate.cashBuy, rate.cashSell]
+    assert.ok(values.some((value) => value !== undefined))
+    assert.ok(values.every((value) => value === undefined || (Number.isFinite(value) && value > 0)))
+  }
+}
