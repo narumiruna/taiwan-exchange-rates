@@ -1,4 +1,4 @@
-import { Impit } from "impit"
+import type { Impit } from "impit"
 import {
   extractCooperativeBankToken,
   parseBankOfTaiwanRates,
@@ -249,12 +249,12 @@ async function request(
 ): Promise<RateFetchResponse> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? timeoutMs)
-  let fetcher: RateFetch = options.fetch ?? globalThis.fetch
-  if (!options.fetch && browser) {
-    const browserClient = client ?? createBrowser(options)
-    fetcher = (input, requestInit) => browserClient.fetch(input, requestInit as never)
-  }
   try {
+    let fetcher: RateFetch = options.fetch ?? globalThis.fetch
+    if (!options.fetch && browser) {
+      const browserClient = client ?? (await createBrowser(options))
+      fetcher = (input, requestInit) => browserClient.fetch(input, requestInit as never)
+    }
     const response = await fetcher(url, { ...init, redirect: "follow", signal: controller.signal })
     if (!response.ok) {
       throw new Error(`Exchange-rate request failed for ${url} (${response.status})`)
@@ -265,6 +265,7 @@ async function request(
   }
 }
 
-function createBrowser(options: FetchRatesOptions): Impit {
+async function createBrowser(options: FetchRatesOptions): Promise<Impit> {
+  const { Impit } = await import("impit")
   return new Impit({ browser: "chrome", timeout: options.timeoutMs ?? timeoutMs })
 }
