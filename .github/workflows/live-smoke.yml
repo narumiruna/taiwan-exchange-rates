@@ -28,7 +28,7 @@ jobs:
         continue-on-error: true
         run: node scripts/smoke.mjs --output live-smoke-report.json
       - if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: live-smoke-report
           path: live-smoke-report.json
