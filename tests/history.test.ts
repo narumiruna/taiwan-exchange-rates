@@ -3,7 +3,12 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, test } from "vitest"
-import { appendHistory, createHistoryRecord, readHistory } from "../src/history.js"
+import {
+  appendHistory,
+  createHistoryRecord,
+  HistoryQueryError,
+  readHistory,
+} from "../src/history.js"
 import type { Rate } from "../src/index.js"
 
 const rate = (source: string, exchange: Rate["exchange"] = "BANK_OF_TAIWAN"): Rate => ({
@@ -73,6 +78,22 @@ describe("JSONL history", () => {
       await expect(readHistory(path)).rejects.toThrow("invalid rates")
     } finally {
       await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  test("identifies query validation errors while preserving RangeError compatibility", async () => {
+    for (const options of [
+      { limit: 0 },
+      { limit: 10001 },
+      { since: "invalid" },
+      { until: new Date(Number.NaN) },
+      { since: "2026-09-22", until: "2026-09-21" },
+    ]) {
+      await assert.rejects(readHistory("missing", options), (error) => {
+        assert.ok(error instanceof HistoryQueryError)
+        assert.ok(error instanceof RangeError)
+        return true
+      })
     }
   })
 

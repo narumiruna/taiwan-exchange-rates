@@ -3,7 +3,7 @@ import type { AddressInfo } from "node:net"
 import type { RateClient, RateClientOptions } from "./client.js"
 import { createRateClient } from "./client.js"
 import type { ReadHistoryOptions } from "./history.js"
-import { readHistory } from "./history.js"
+import { HistoryQueryError, readHistory } from "./history.js"
 import { queryRates } from "./query.js"
 import type { Exchange } from "./types.js"
 import { banks, exchanges } from "./types.js"
@@ -193,6 +193,7 @@ async function handleHistory(
     const records = await (options.readHistory ?? readHistory)(options.historyFile, readOptions)
     sendJson(response, 200, { records })
   } catch (error) {
+    if (!(error instanceof HistoryQueryError)) throw error
     sendJson(response, 400, { error: errorMessage(error) })
   }
 }

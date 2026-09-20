@@ -42,6 +42,8 @@ const recent = await readHistory("./rates.jsonl", {
 
 Reader 保留檔案順序並回傳最後 `limit` 筆；預設 100、上限 10,000。不存在的檔案回傳空陣列。格式損壞時會回報行號，不會靜默略過。
 
+`readHistory()` rejects invalid limits, invalid date boundaries and reversed date ranges with `HistoryQueryError`, exported from `taiwan-exchange-rates/history`. It extends `RangeError` and distinguishes invalid query options from filesystem or malformed-record errors. Injected HTTP history readers should use this error only for invalid query options.
+
 Default history tables keep each snapshot separate under `Recorded at: <recordedAt>`, in file order. This is the snapshot recording time, not a bank update time or the rate's `fetchedAt`. JSON retains the complete records; CSV retains normalized rate rows with `fetchedAt`.
 
 JSONL 是 append-only，可能持續增長。請依執行頻率使用 `logrotate`、定期封存或刪除舊檔。schema 目前是 version 1；升級 reader 時必須保留 version 1 相容性。修改或搬移資料前先備份檔案。

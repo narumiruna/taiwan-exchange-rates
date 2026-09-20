@@ -72,7 +72,7 @@ export function queryRates(rates: readonly Rate[], options: QueryRatesOptions = 
   }
   const filtered = filterRates(rates, options.currencies)
   const groups = groupRates(filtered)
-  const order = options.currencies
+  const order = options.currencies?.length
     ? [...new Set(options.currencies.map((currency) => currency.toUpperCase()))]
     : [...groups.keys()]
   const result: Rate[] = []

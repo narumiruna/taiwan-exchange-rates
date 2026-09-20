@@ -1,11 +1,13 @@
 import assert from "node:assert/strict"
-import { mkdtemp } from "node:fs/promises"
+import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { createServer } from "node:http"
+import type { AddressInfo } from "node:net"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, test } from "vitest"
 import { appendHistory, createHistoryRecord } from "../src/history.js"
 import type { Rate, RateClient } from "../src/index.js"
-import { startServer } from "../src/server.js"
+import { createRequestHandler, startServer } from "../src/server.js"
 
 const rates: Rate[] = [
   {
@@ -107,6 +109,90 @@ describe("HTTP server", () => {
       assert.equal((await fetch(`${server.url}/missing`)).status, 404)
     } finally {
       await server.close()
+    }
+  })
+
+  test.each([
+    ["not-json\n", "malformed JSON"],
+    ['{"version":2}\n', "unsupported schema"],
+  ])("returns HTTP 500 for invalid history data: %s", async (content, reason) => {
+    const directory = await mkdtemp(join(tmpdir(), "twrate-server-invalid-"))
+    const historyFile = join(directory, "rates.jsonl")
+    await writeFile(historyFile, content)
+    const server = await startServer({ client, historyFile, port: 0 })
+    try {
+      const response = await fetch(`${server.url}/api/history`)
+      assert.equal(response.status, 500)
+      assert.deepEqual(await response.json(), {
+        error: `Invalid history record on line 1: ${reason}`,
+      })
+    } finally {
+      await server.close()
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  test("returns HTTP 500 for filesystem failures", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "twrate-server-io-"))
+    const server = await startServer({ client, historyFile: directory, port: 0 })
+    try {
+      const response = await fetch(`${server.url}/api/history`)
+      assert.equal(response.status, 500)
+      assert.equal(typeof (await response.json()).error, "string")
+    } finally {
+      await server.close()
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  test.each([
+    Object.assign(new Error("permission denied"), { code: "EACCES" }),
+    new RangeError("history file too large"),
+  ])("does not classify reader failures as query errors: %s", async (error) => {
+    const server = createServer(
+      createRequestHandler({
+        client,
+        historyFile: "configured.jsonl",
+        readHistory: async () => {
+          throw error
+        },
+      }),
+    )
+    await new Promise<void>((resolve, reject) => {
+      server.once("error", reject)
+      server.listen(0, "127.0.0.1", resolve)
+    })
+    try {
+      const address = server.address() as AddressInfo
+      const response = await fetch(`http://127.0.0.1:${address.port}/api/history`)
+      assert.equal(response.status, 500)
+      assert.deepEqual(await response.json(), { error: error.message })
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      )
+    }
+  })
+
+  test("keeps invalid history queries at 400 and missing files at 200", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "twrate-server-missing-"))
+    const server = await startServer({
+      client,
+      historyFile: join(directory, "missing.jsonl"),
+      port: 0,
+    })
+    try {
+      for (const query of ["since=invalid", "until=invalid", "since=2026-09-22&until=2026-09-21"]) {
+        const response = await fetch(`${server.url}/api/history?${query}`)
+        assert.equal(response.status, 400)
+        assert.match((await response.json()).error, /^History (since|until)/)
+      }
+      const response = await fetch(`${server.url}/api/history`)
+      assert.equal(response.status, 200)
+      assert.deepEqual(await response.json(), { records: [] })
+    } finally {
+      await server.close()
+      await rm(directory, { recursive: true, force: true })
     }
   })
 

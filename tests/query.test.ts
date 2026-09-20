@@ -71,6 +71,25 @@ describe("rate queries", () => {
     assert.equal(sortRates(mixed, { rateType: "cash" }).length, 4)
   })
 
+  test.each([
+    {},
+    { top: 1 },
+    { action: "buy", sort: "price", top: 1 },
+    { action: "sell", rateType: "cash", sort: "price" },
+  ] as const)("treats an empty currency filter as unfiltered with %j", (options) => {
+    const mixed = [rate("DBS_BANK", { spotBuy: 0.2, spotSell: 0.21 }, "JPY"), ...rates]
+    const original = [...mixed]
+    const expected = queryRates(mixed, options)
+    assert.ok(expected.length > 0)
+    assert.deepEqual(queryRates(mixed, { ...options, currencies: [] }), expected)
+    assert.deepEqual(mixed, original)
+    assert.deepEqual(queryRates([], { ...options, currencies: [] }), [])
+    assert.deepEqual(
+      queryRates(mixed, { currencies: [], top: 1 }).map((item) => item.source),
+      ["JPY", "USD"],
+    )
+  })
+
   test("validates price sorting and top-N", () => {
     assert.throws(() => queryRates(rates, { sort: "price" }), /customer action/)
     assert.throws(() => queryRates(rates, { top: 0 }), /positive integer/)

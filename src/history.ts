@@ -25,6 +25,8 @@ export type ReadHistoryOptions = Readonly<{
   until?: Date | string
 }>
 
+export class HistoryQueryError extends RangeError {}
+
 export function createHistoryRecord(
   rates: readonly Rate[],
   options: CreateHistoryRecordOptions = {},
@@ -52,12 +54,12 @@ export async function readHistory(
 ): Promise<HistoryRecord[]> {
   const limit = options.limit ?? 100
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 10_000) {
-    throw new RangeError("History limit must be an integer from 1 to 10000")
+    throw new HistoryQueryError("History limit must be an integer from 1 to 10000")
   }
   const since = parseBoundary(options.since, "since")
   const until = parseBoundary(options.until, "until")
   if (since !== undefined && until !== undefined && since > until) {
-    throw new RangeError("History since must not be after until")
+    throw new HistoryQueryError("History since must not be after until")
   }
 
   let content: string
@@ -140,7 +142,8 @@ function isExchange(value: unknown): value is Exchange {
 function parseBoundary(value: Date | string | undefined, name: string): number | undefined {
   if (value === undefined) return undefined
   const timestamp = value instanceof Date ? value.getTime() : Date.parse(value)
-  if (!Number.isFinite(timestamp)) throw new RangeError(`History ${name} must be a valid date`)
+  if (!Number.isFinite(timestamp))
+    throw new HistoryQueryError(`History ${name} must be a valid date`)
   return timestamp
 }
 

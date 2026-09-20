@@ -145,6 +145,8 @@ const bestUsdCash = bestRate(
 
 可用 pure helper：`rateField()`、`executablePrice()`、`filterRates()`、`groupRates()`、`sortRates()`、`queryRates()` 與 `bestRate()`。
 
+For `filterRates()` and `queryRates()`, omitted or empty `currencies` means no currency filter. With no filter, `queryRates()` preserves first-seen currency group order and still applies ranking and `top` per group.
+
 Price rankings omit rates without the selected executable price. Top-N spread rankings omit rates without the selected spread; unlimited spread output retains missing values for comparison. An empty CLI ranking exits with status `1`.
 
 ### Cache 與 provider scheduling

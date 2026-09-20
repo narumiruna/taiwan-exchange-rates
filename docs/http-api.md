@@ -66,6 +66,8 @@ curl 'http://127.0.0.1:3000/api/rates?currency=USD&currency=JPY&action=buy&type=
 
 只有 server 設定 `--history-file` 時可用，否則回傳 `404`。支援重複的 `currency`、重複的完整 `exchange` identifier、`since`、`until` 與 `limit`；HTTP 上限為 1,000。
 
+Invalid history query parameters return `400`. History read failures and malformed records return `500`. A configured but missing history file returns `200` with an empty `records` array.
+
 ### `GET /`
 
 提供 dependency-free、鍵盤可操作的比較頁面。頁面顯示 loading、validation、partial failure 與 history 狀態；動態值以 DOM `textContent` 寫入，不插入未信任 HTML。
