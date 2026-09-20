@@ -28,6 +28,10 @@ export type RateClient = Readonly<{
 }>
 
 type CacheEntry = Readonly<{ expiresAt: number; rates: readonly Rate[] }>
+type PendingEntry = Readonly<{
+  generation: number
+  request: Promise<readonly Rate[]>
+}>
 
 export function createRateClient(options: RateClientOptions = {}): RateClient {
   const cacheTtlMs = nonNegative(options.cacheTtlMs ?? 0, "cacheTtlMs")
@@ -38,15 +42,17 @@ export function createRateClient(options: RateClientOptions = {}): RateClient {
   const minStartIntervalMs = nonNegative(options.minStartIntervalMs ?? 0, "minStartIntervalMs")
   const now = options.now ?? (() => new Date())
   const cache = new Map<Exchange, CacheEntry>()
-  const pending = new Map<Exchange, Promise<readonly Rate[]>>()
+  const pending = new Map<Exchange, PendingEntry>()
   const scheduler = createScheduler(maxConcurrency, minStartIntervalMs)
+  let cacheGeneration = 0
 
   const load = (exchange: Exchange, fetchedAt: Date): Promise<readonly Rate[]> => {
     const cached = cache.get(exchange)
     if (cached && cached.expiresAt > now().getTime()) return Promise.resolve(cached.rates)
     if (cached) cache.delete(exchange)
+    const generation = cacheGeneration
     const running = pending.get(exchange)
-    if (running) return running
+    if (running?.generation === generation) return running.request
 
     const request = scheduler
       .schedule(() =>
@@ -58,13 +64,17 @@ export function createRateClient(options: RateClientOptions = {}): RateClient {
       )
       .then((rates) => {
         const immutable = immutableRates(rates)
-        if (cacheTtlMs > 0) {
+        if (cacheTtlMs > 0 && generation === cacheGeneration) {
           cache.set(exchange, { expiresAt: now().getTime() + cacheTtlMs, rates: immutable })
         }
         return immutable
       })
-      .finally(() => pending.delete(exchange))
-    pending.set(exchange, request)
+    const entry = { generation, request }
+    const clearPending = () => {
+      if (pending.get(exchange) === entry) pending.delete(exchange)
+    }
+    pending.set(exchange, entry)
+    void request.then(clearPending, clearPending)
     return request
   }
 
@@ -94,7 +104,11 @@ export function createRateClient(options: RateClientOptions = {}): RateClient {
   }
 
   return {
-    clearCache: () => cache.clear(),
+    clearCache: () => {
+      cacheGeneration += 1
+      cache.clear()
+      pending.clear()
+    },
     fetchAllRates: async (fetchOptions = {}) => (await fetchAllRatesDetailed(fetchOptions)).rates,
     fetchAllRatesDetailed,
     fetchRates,

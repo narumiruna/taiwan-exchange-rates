@@ -28,6 +28,27 @@ describe("rate client", () => {
     assert.equal(fetch.mock.calls.length, 3)
   })
 
+  test("invalidates in-flight requests without allowing stale cache refills", async () => {
+    const responses: Array<(response: Response) => void> = []
+    const fetch = vi.fn(() => new Promise<Response>((resolve) => responses.push(resolve)))
+    const client = createRateClient({ cacheTtlMs: 1000, fetch, now: () => fetchedAt })
+
+    const stale = client.fetchRates()
+    client.clearCache()
+    const fresh = client.fetchRates()
+    assert.equal(fetch.mock.calls.length, 2)
+
+    responses[0]?.(new Response(botText))
+    await stale
+    const coalesced = client.fetchRates()
+    assert.equal(coalesced, fresh)
+
+    responses[1]?.(new Response(botText))
+    await Promise.all([fresh, coalesced])
+    await client.fetchRates()
+    assert.equal(fetch.mock.calls.length, 2)
+  })
+
   test("does not cache failures", async () => {
     const fetch = vi
       .fn()

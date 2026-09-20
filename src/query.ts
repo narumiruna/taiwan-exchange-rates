@@ -78,7 +78,12 @@ export function queryRates(rates: readonly Rate[], options: QueryRatesOptions = 
     const group = groups.get(currency)
     if (!group) continue
     const sorted = sortRates(group, options)
-    result.push(...(options.top === undefined ? sorted : sorted.slice(0, options.top)))
+    const action = options.action
+    const ranked =
+      options.sort === "price" && action
+        ? sorted.filter((rate) => executablePrice(rate, action, options.rateType) !== undefined)
+        : sorted
+    result.push(...(options.top === undefined ? ranked : ranked.slice(0, options.top)))
   }
   return result
 }

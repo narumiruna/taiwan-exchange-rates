@@ -43,10 +43,19 @@ describe("rate queries", () => {
     )
   })
 
-  test("sorts missing fields last and excludes them from best quote", () => {
+  test("sorts missing fields last and excludes them from executable rankings", () => {
     const cash = sortRates(rates, { action: "buy", rateType: "cash", sort: "price" })
     assert.equal(cash.at(-1)?.exchange, "LINE_BANK")
     assert.equal(bestRate(rates, "buy", "cash")?.exchange, "ESUN_BANK")
+    assert.deepEqual(
+      queryRates(rates, {
+        action: "buy",
+        rateType: "cash",
+        sort: "price",
+        top: 3,
+      }).map((item) => item.exchange),
+      ["ESUN_BANK", "BANK_OF_TAIWAN"],
+    )
   })
 
   test("validates price sorting and top-N", () => {

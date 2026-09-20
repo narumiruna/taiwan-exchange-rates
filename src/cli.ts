@@ -155,10 +155,10 @@ function parseSettings(values: Values): CliSettings {
   const rateType = optionalChoice(values.type, ["spot", "cash"] as const, "type") ?? "spot"
   const requestedSort = optionalChoice(values.sort, ["price", "spread"] as const, "sort")
   const sort = requestedSort ?? (action ? "price" : "spread")
-  if (sort === "price" && !action) throw new Error("--sort price requires --action buy|sell")
+  if (sort === "price" && !action) usage("--sort price requires --action buy|sell")
   const formatValue = optionalChoice(values.format, ["table", "json", "csv"] as const, "format")
   if (values.json && formatValue && formatValue !== "json") {
-    throw new Error("--json cannot be combined with a non-JSON --format")
+    usage("--json cannot be combined with a non-JSON --format")
   }
   return {
     ...(action ? { action } : {}),
@@ -426,7 +426,7 @@ function optionalChoice<const T extends readonly string[]>(
 ): T[number] | undefined {
   if (value === undefined) return undefined
   if (!(choices as readonly string[]).includes(value)) {
-    throw new Error(`--${name} must be one of: ${choices.join(", ")}`)
+    usage(`--${name} must be one of: ${choices.join(", ")}`)
   }
   return value as T[number]
 }
@@ -440,8 +440,9 @@ function optionalNumber(
   if (value === undefined) return undefined
   const number = Number(value)
   const valid = Number.isFinite(number) && (inclusive ? number >= minimum : number > minimum)
-  if (!valid)
-    throw new Error(`--${name} must be ${inclusive ? "at least" : "greater than"} ${minimum}`)
+  if (!valid) {
+    usage(`--${name} must be ${inclusive ? "at least" : "greater than"} ${minimum}`)
+  }
   return number
 }
 
@@ -454,7 +455,7 @@ function optionalInteger(
   if (value === undefined) return undefined
   const number = Number(value)
   if (!Number.isSafeInteger(number) || number < fallbackMinimum) {
-    throw new Error(`--${name} must be an integer of at least ${fallbackMinimum}`)
+    usage(`--${name} must be an integer of at least ${fallbackMinimum}`)
   }
   return number
 }

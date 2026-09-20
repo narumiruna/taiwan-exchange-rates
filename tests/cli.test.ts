@@ -106,6 +106,30 @@ describe("CLI", () => {
     assert.equal(await runCli(["USD", "--cache-ttl", "-1"], invalid.output, api), 2)
   })
 
+  test("returns usage exits for command-local numeric validation", async () => {
+    const fetchAllRates = vi.fn(async () => [usdRate])
+    const localApi = { fetchAllRates, fetchRates: async () => [usdRate] }
+
+    assert.equal(
+      await runCli(
+        ["history", "--history-file", "missing.jsonl", "--limit", "0"],
+        captureOutput().output,
+        localApi,
+      ),
+      2,
+    )
+    assert.equal(
+      await runCli(
+        ["alert", "USD", "--action", "buy", "--at-or-below", "0"],
+        captureOutput().output,
+        localApi,
+      ),
+      2,
+    )
+    assert.equal(await runCli(["serve", "--port", "-1"], captureOutput().output, localApi), 2)
+    assert.equal(fetchAllRates.mock.calls.length, 0)
+  })
+
   test("discovers currencies with partial failures and JSON bank metadata", async () => {
     const discoveryApi = {
       fetchAllRates: async (options?: {
