@@ -67,6 +67,34 @@ describe("HTTP server", () => {
     }
   })
 
+  test("omits unavailable prices and spreads from HTTP rankings", async () => {
+    const quoted = { ...rates[0], cashBuy: 30, cashSell: 33 } as Rate
+    const rankingClient: RateClient = {
+      ...client,
+      fetchAllRatesDetailed: async () => ({
+        failures: [{ error: new Error("offline"), exchange: "DBS_BANK" }],
+        rates: [quoted, rates[1] as Rate],
+      }),
+    }
+    const server = await startServer({ client: rankingClient, port: 0 })
+    try {
+      for (const action of ["", "&action=buy", "&action=sell"]) {
+        const response = await fetch(
+          `${server.url}/api/rates?currency=USD&type=cash&top=3${action}`,
+        )
+        assert.equal(response.status, 200)
+        const body = await response.json()
+        assert.deepEqual(body.rates, [quoted])
+        assert.deepEqual(body.failures, [{ error: "offline", exchange: "DBS_BANK" }])
+      }
+      const empty = await fetch(`${server.url}/api/rates?currency=JPY&type=cash&action=buy`)
+      assert.equal(empty.status, 200)
+      assert.deepEqual((await empty.json()).rates, [])
+    } finally {
+      await server.close()
+    }
+  })
+
   test("validates methods, query bounds, missing routes, and optional history", async () => {
     const server = await startServer({ client, port: 0 })
     try {

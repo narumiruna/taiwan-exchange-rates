@@ -215,6 +215,10 @@ async function runRates(
     sort: settings.sort,
     top: settings.top,
   })
+  if (selected.length === 0) {
+    output.error(`No ${currencies.join(", ")}/TWD rates matched the requested ranking.`)
+    return 1
+  }
   output.log(formatRates(selected, settings.format, settings))
   if (typeof values["history-file"] === "string") {
     await appendHistory(

@@ -49,6 +49,46 @@ describe("rate client", () => {
     assert.equal(fetch.mock.calls.length, 2)
   })
 
+  test("keeps fresh cache data when an invalidated request finishes last", async () => {
+    const responses: Array<(response: Response) => void> = []
+    const fetch = vi.fn(() => new Promise<Response>((resolve) => responses.push(resolve)))
+    const client = createRateClient({ cacheTtlMs: 1000, fetch, now: () => fetchedAt })
+    const stale = client.fetchRates()
+    client.clearCache()
+    const fresh = client.fetchRates()
+    responses[1]?.(new Response(botText.replace("31.9", "32.9")))
+    const freshRates = await fresh
+    responses[0]?.(new Response(botText))
+    const staleRates = await stale
+    assert.equal(staleRates[0]?.spotSell, 31.9)
+    assert.equal(freshRates[0]?.spotSell, 32.9)
+    assert.equal(await client.fetchRates(), freshRates)
+    assert.equal(fetch.mock.calls.length, 2)
+  })
+
+  test("honors concurrency limits for fresh loads after invalidating queued requests", async () => {
+    const responses: Array<(response: Response) => void> = []
+    const fetch = vi.fn(() => new Promise<Response>((resolve) => responses.push(resolve)))
+    const client = createRateClient({ cacheTtlMs: 1000, fetch, maxConcurrency: 1 })
+    const old = client.fetchRates()
+    client.clearCache()
+    const queued = client.fetchRates()
+    client.clearCache()
+    const fresh = client.fetchRates()
+    assert.equal(fetch.mock.calls.length, 1)
+    responses[0]?.(new Response(botText))
+    await old
+    assert.equal(fetch.mock.calls.length, 2)
+    responses[1]?.(new Response(botText))
+    await queued
+    assert.equal(fetch.mock.calls.length, 3)
+    assert.equal(client.fetchRates(), fresh)
+    responses[2]?.(new Response(botText))
+    const freshRates = await fresh
+    assert.equal(await client.fetchRates(), freshRates)
+    assert.equal(fetch.mock.calls.length, 3)
+  })
+
   test("does not cache failures", async () => {
     const fetch = vi
       .fn()

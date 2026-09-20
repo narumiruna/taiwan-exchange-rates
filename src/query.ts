@@ -62,7 +62,9 @@ export function sortRates(
 }
 
 export function queryRates(rates: readonly Rate[], options: QueryRatesOptions = {}): Rate[] {
-  if (options.sort === "price" && !options.action) {
+  const sort = options.sort ?? "spread"
+  const rateType = options.rateType ?? "spot"
+  if (sort === "price" && !options.action) {
     throw new RangeError("Price sorting requires a customer action")
   }
   if (options.top !== undefined && (!Number.isSafeInteger(options.top) || options.top < 1)) {
@@ -78,10 +80,9 @@ export function queryRates(rates: readonly Rate[], options: QueryRatesOptions = 
     const group = groups.get(currency)
     if (!group) continue
     const sorted = sortRates(group, options)
-    const action = options.action
     const ranked =
-      options.sort === "price" && action
-        ? sorted.filter((rate) => executablePrice(rate, action, options.rateType) !== undefined)
+      sort === "price" || options.top !== undefined
+        ? sorted.filter((rate) => sortableValue(rate, sort, options.action, rateType) !== undefined)
         : sorted
     result.push(...(options.top === undefined ? ranked : ranked.slice(0, options.top)))
   }

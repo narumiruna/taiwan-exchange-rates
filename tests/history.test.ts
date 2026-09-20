@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { mkdtemp, writeFile } from "node:fs/promises"
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { describe, expect, test } from "vitest"
@@ -50,6 +50,30 @@ describe("JSONL history", () => {
     const path = join(directory, "rates.jsonl")
     await writeFile(path, `${JSON.stringify(createHistoryRecord([rate("USD")]))}\nnot-json\n`)
     await expect(readHistory(path)).rejects.toThrow("line 2")
+  })
+
+  test("rejects non-finite quotes before changing history and keeps later records readable", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "twrate-history-finite-"))
+    const path = join(directory, "rates.jsonl")
+    try {
+      const valid = createHistoryRecord([rate("USD")])
+      await appendHistory(path, valid)
+      const original = await readFile(path, "utf8")
+      for (const field of ["cashBuy", "cashSell", "spotBuy", "spotSell"] as const) {
+        for (const value of [Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NaN]) {
+          const record = createHistoryRecord([{ ...rate("USD"), [field]: value }])
+          await expect(appendHistory(path, record)).rejects.toThrow("invalid rates")
+          assert.equal(await readFile(path, "utf8"), original)
+        }
+      }
+      await appendHistory(path, valid)
+      assert.deepEqual(await readHistory(path), [valid, valid])
+
+      await writeFile(path, original.replace('"spotBuy":31', '"spotBuy":1e999'))
+      await expect(readHistory(path)).rejects.toThrow("invalid rates")
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
   })
 
   test("validates ranges and limits", async () => {

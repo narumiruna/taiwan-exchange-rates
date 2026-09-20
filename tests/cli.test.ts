@@ -93,6 +93,39 @@ describe("CLI", () => {
     assert.match(csv.logs[0] ?? "", /^source,target,exchange/)
   })
 
+  test.each(["table", "json", "csv"])(
+    "returns no-data status for an empty ranked result in %s output",
+    async (format) => {
+      for (const sort of ["price", "spread"]) {
+        const output = captureOutput()
+        assert.equal(
+          await runCli(
+            [
+              "USD",
+              "--bank",
+              "line",
+              "--action",
+              "buy",
+              "--type",
+              "cash",
+              "--sort",
+              sort,
+              "--top",
+              "3",
+              "--format",
+              format,
+            ],
+            output.output,
+            api,
+          ),
+          1,
+        )
+        assert.deepEqual(output.logs, [])
+        assert.match(output.errors[0] ?? "", /No .*rates/)
+      }
+    },
+  )
+
   test("propagates timeout and validates option combinations", async () => {
     const fetchAllRates = vi.fn(async () => [usdRate])
     const timeoutApi = { fetchAllRates, fetchRates: async () => [usdRate] }

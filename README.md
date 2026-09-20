@@ -145,6 +145,8 @@ const bestUsdCash = bestRate(
 
 可用 pure helper：`rateField()`、`executablePrice()`、`filterRates()`、`groupRates()`、`sortRates()`、`queryRates()` 與 `bestRate()`。
 
+Price rankings omit rates without the selected executable price. Top-N spread rankings omit rates without the selected spread; unlimited spread output retains missing values for comparison. An empty CLI ranking exits with status `1`.
+
 ### Cache 與 provider scheduling
 
 ```ts
@@ -161,6 +163,8 @@ client.clearCache()
 ```
 
 Cache 只保存成功結果、會合併同一銀行的 concurrent miss，且只存在目前 process；restart 或另一個 process 不共享。TTL 預設為 `0`（關閉），provider concurrency 預設不限制，啟動間隔預設 `0`。失敗不 cache，也不 retry。
+
+`clearCache()` also invalidates pending cache fills. Existing callers still receive their results, but later calls schedule a fresh fetch under the same concurrency and start-interval limits.
 
 ### `Rate` model
 

@@ -126,7 +126,10 @@ function isRate(value: unknown): value is Rate {
   const values = [value.spotBuy, value.spotSell, value.cashBuy, value.cashSell]
   return (
     values.some((item) => item !== undefined) &&
-    values.every((item) => item === undefined || (typeof item === "number" && item > 0))
+    values.every(
+      (item) =>
+        item === undefined || (typeof item === "number" && Number.isFinite(item) && item > 0),
+    )
   )
 }
 

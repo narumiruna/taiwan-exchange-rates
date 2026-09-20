@@ -97,14 +97,15 @@ document.querySelector("#history-button").addEventListener("click", async () => 
   status.textContent = "載入歷史…"
   historyBody.replaceChildren()
   try {
+    const rateType = document.querySelector("#type").value
     const body = await request("/api/history?currency=" + encodeURIComponent(document.querySelector("#currency").value.toUpperCase()))
     for (const record of body.records) {
       for (const rate of record.rates) {
         const row = document.createElement("tr")
         cell(row, record.recordedAt)
         cell(row, rate.exchange)
-        cell(row, rate.spotBuy ?? rate.cashBuy)
-        cell(row, rate.spotSell ?? rate.cashSell)
+        cell(row, rateType === "cash" ? rate.cashBuy : rate.spotBuy)
+        cell(row, rateType === "cash" ? rate.cashSell : rate.spotSell)
         historyBody.append(row)
       }
     }

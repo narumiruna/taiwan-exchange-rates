@@ -58,6 +58,19 @@ describe("rate queries", () => {
     )
   })
 
+  test("excludes missing spreads from top-N without changing unlimited spread output", () => {
+    const mixed = [...rates, rate("DBS_BANK", { cashBuy: 31 })]
+    for (const sort of [undefined, "spread"] as const) {
+      assert.deepEqual(
+        queryRates(mixed, { rateType: "cash", sort, top: 4 }).map((item) => item.exchange),
+        ["ESUN_BANK", "BANK_OF_TAIWAN"],
+      )
+      assert.deepEqual(queryRates(mixed.slice(2), { rateType: "cash", sort, top: 4 }), [])
+    }
+    assert.equal(queryRates(mixed, { rateType: "cash" }).length, 4)
+    assert.equal(sortRates(mixed, { rateType: "cash" }).length, 4)
+  })
+
   test("validates price sorting and top-N", () => {
     assert.throws(() => queryRates(rates, { sort: "price" }), /customer action/)
     assert.throws(() => queryRates(rates, { top: 0 }), /positive integer/)
