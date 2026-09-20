@@ -152,6 +152,60 @@ describe("web history", () => {
 })
 
 describe("web requests", () => {
+  test.each([0, 1, 17])("reports empty results with %i provider failures", async (count) => {
+    const failures = Array.from({ length: count }, () => ({ error: "offline" }))
+    const page = browserPage(async () => Response.json({ rates: [], failures }))
+    await page.submit()
+    assert.equal(page.element("#rates tbody").children.length, 0)
+    assert.match(page.element("#status").textContent, /沒有可用的匯率/)
+    assert.doesNotMatch(page.element("#status").textContent, /其餘結果仍可使用|查詢完成/)
+    assert.equal(page.element("#status").className, "warning")
+    if (count) assert.ok(page.element("#status").textContent.includes(`${count} 家銀行查詢失敗`))
+  })
+
+  test("recovers from empty results to partial and complete success", async () => {
+    const page = pendingPage()
+    const results = [
+      {
+        rates: [],
+        failures: [{}],
+        status: "沒有可用的匯率。1 家銀行查詢失敗。",
+        className: "warning",
+      },
+      {
+        rates: [rate],
+        failures: [{}],
+        status: "1 家銀行查詢失敗，其餘結果仍可使用。",
+        className: "warning",
+      },
+      { rates: [rate], failures: [], status: "查詢完成", className: "" },
+    ]
+    for (const [index, result] of results.entries()) {
+      const pending = page.submit()
+      page.requests[index]?.resolve(
+        Response.json({ rates: result.rates, failures: result.failures }),
+      )
+      await pending
+      assert.equal(page.element("#rates tbody").children.length, result.rates.length)
+      assert.equal(page.element("#status").textContent, result.status)
+      assert.equal(page.element("#status").className, result.className)
+      assert.equal(page.element("#status").attributes.has("role"), false)
+    }
+  })
+
+  test("ignores stale empty results after a newer successful response", async () => {
+    const page = pendingPage()
+    const old = page.submit()
+    const current = page.submit()
+    page.requests[1]?.resolve(Response.json({ rates: [rate], failures: [] }))
+    await current
+    page.requests[0]?.resolve(Response.json({ rates: [], failures: [{}] }))
+    await old
+    assert.equal(page.element("#rates tbody").children.length, 1)
+    assert.equal(page.element("#status").textContent, "查詢完成")
+    assert.equal(page.element("#status").className, "")
+  })
+
   test.each([
     ["cash", "spot", "30", "33"],
     ["spot", "cash", "31", "32"],

@@ -81,6 +81,11 @@ form.addEventListener("submit", async (event) => {
     const rateType = params.get("type")
     const body = await request("/api/rates?" + params)
     if (generation !== requestGeneration) return
+    if (body.rates.length === 0) {
+      status.textContent = "沒有可用的匯率。" + (body.failures.length ? body.failures.length + " 家銀行查詢失敗。" : "")
+      status.className = "warning"
+      return
+    }
     for (const rate of body.rates) {
       const row = document.createElement("tr")
       cell(row, rate.exchange)

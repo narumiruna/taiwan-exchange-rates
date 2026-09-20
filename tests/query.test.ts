@@ -90,6 +90,15 @@ describe("rate queries", () => {
     )
   })
 
+  test.each([0, 1, 3])("rejects price sorting without action for %i input rates", (count) => {
+    for (const sort of [sortRates, queryRates]) {
+      assert.throws(() => sort(rates.slice(0, count), { sort: "price" }), {
+        name: "RangeError",
+        message: "Price sorting requires a customer action",
+      })
+    }
+  })
+
   test("validates price sorting and top-N", () => {
     assert.throws(() => queryRates(rates, { sort: "price" }), /customer action/)
     assert.throws(() => queryRates(rates, { top: 0 }), /positive integer/)

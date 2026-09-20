@@ -147,6 +147,8 @@ const bestUsdCash = bestRate(
 
 For `filterRates()` and `queryRates()`, omitted or empty `currencies` means no currency filter. With no filter, `queryRates()` preserves first-seen currency group order and still applies ranking and `top` per group.
 
+Both `sortRates()` and `queryRates()` reject `sort: "price"` without a customer `action`, even for empty input.
+
 Price rankings omit rates without the selected executable price. Top-N spread rankings omit rates without the selected spread; unlimited spread output retains missing values for comparison. An empty CLI ranking exits with status `1`.
 
 ### Cache 與 provider scheduling

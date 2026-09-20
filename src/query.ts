@@ -48,6 +48,9 @@ export function sortRates(
 ): Rate[] {
   const rateType = options.rateType ?? "spot"
   const sort = options.sort ?? "spread"
+  if (sort === "price" && !options.action) {
+    throw new RangeError("Price sorting requires a customer action")
+  }
   return [...rates].sort((left, right) => {
     const leftValue = sortableValue(left, sort, options.action, rateType)
     const rightValue = sortableValue(right, sort, options.action, rateType)

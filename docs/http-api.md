@@ -72,6 +72,8 @@ Invalid history query parameters return `400`. History read failures and malform
 
 提供 dependency-free、鍵盤可操作的比較頁面。頁面顯示 loading、validation、partial failure 與 history 狀態；動態值以 DOM `textContent` 寫入，不插入未信任 HTML。
 
+Empty rate results display an explicit no-usable-rates warning, including the provider failure count when present. Partial-success wording is used only when some rate rows remain available.
+
 When requests overlap, only the latest rate submission or history action can update the page. Earlier requests may finish, but their responses and errors are ignored. Rate rows use the quote type captured in the request, even if the selector changes while loading.
 
 ## Programmatic server
