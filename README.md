@@ -202,6 +202,8 @@ type Rate = Readonly<{
 
 ## 開發與可靠性
 
+Use Node.js 26 for development tooling. The published package still supports Node.js 20.18.1 and later.
+
 ```sh
 npm install
 npm run ci              # Biome、Vitest、TypeScript、文件連結
@@ -210,7 +212,9 @@ npm run smoke           # 實際查詢全部 17 家銀行
 node dist/cli.js USD --bank bot
 ```
 
-Deterministic CI 在最低支援 Node.js 20.18.1 與 Node.js 26 執行。每日 live smoke 會輸出逐銀行 JSON artifact，任何銀行失敗或沒有有效匯率時失敗；由於上游維護可能造成短暫紅燈，診斷時應查看 artifact，而不是降低 parser contract 或隱藏失敗。
+Deterministic CI runs lint, tests, compilation, and documentation checks on Node.js 26, then verifies the built package with a clean installation, subpath imports, and CLI smoke check on the minimum supported Node.js 20.18.1.
+
+每日 live smoke 會輸出逐銀行 JSON artifact，任何銀行失敗或沒有有效匯率時失敗；由於上游維護可能造成短暫紅燈，診斷時應查看 artifact，而不是降低 parser contract 或隱藏失敗。
 
 ## License
 
