@@ -125,7 +125,7 @@ export const banks: readonly BankMetadata[] = [
     name: "First Bank",
     nameZhTw: "第一銀行",
     rateTypes: ["spot", "cash"],
-    rateUrl: "https://www.firstbank.com.tw/sites/fcb/touch/1565688252532",
+    rateUrl: "https://ibank.firstbank.com.tw/NetBank/7/0201.html?sh=none",
     sourceKind: "html",
   },
   {

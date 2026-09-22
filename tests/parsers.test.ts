@@ -172,17 +172,22 @@ describe("HTML response parsers", () => {
     for (const rates of [hsbc, land, yuanta]) assert.equal(rates[0]?.cashSell, 33)
   })
 
-  test("merges First Bank spot and cash rows", () => {
+  test("merges First Bank rows from both public rate boards", () => {
     const rates = parseFirstBankRates(
       `<table>
         <tr><td>美元 (USD)</td><td>即期</td><td>31</td><td>32</td></tr>
         <tr><td>美元 (USD)</td><td>現鈔</td><td>30</td><td>33</td></tr>
+        <tr><td>EUR</td><td>Spot</td><td>35</td><td>36</td></tr>
+        <tr><td>EUR</td><td>Cash</td><td>34</td><td>37</td></tr>
       </table>`,
       fetchedAt,
     )
     assertRateContract(rates, "FIRST_BANK")
     assert.equal(rates[0]?.spotBuy, 31)
     assert.equal(rates[0]?.cashSell, 33)
+    assert.equal(rates[1]?.source, "EUR")
+    assert.equal(rates[1]?.spotBuy, 35)
+    assert.equal(rates[1]?.cashSell, 37)
   })
 
   test("parses KGI and Cathay component markup", () => {

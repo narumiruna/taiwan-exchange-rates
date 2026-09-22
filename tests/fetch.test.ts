@@ -64,6 +64,25 @@ describe("provider requests", () => {
     assert.equal(rates[0]?.cashBuy, 31.4)
   })
 
+  test("requests First Bank's advanced rate board", async () => {
+    const html = `<table>
+      <tr><td>USD</td><td>Spot</td><td>31</td><td>32</td></tr>
+      <tr><td>USD</td><td>Cash</td><td>30</td><td>33</td></tr>
+    </table>`
+    const mockFetch = vi.fn(
+      async (_input: string | URL | Request, _init?: RequestInit) => new Response(html),
+    )
+    const rates = await fetchRates("FIRST_BANK", { fetch: mockFetch, now: () => fetchedAt })
+
+    assert.match(String(mockFetch.mock.calls[0]?.[0]), /ibank\.firstbank\.com\.tw/)
+    assert.equal(
+      new Headers(mockFetch.mock.calls[0]?.[1]?.headers).get("Accept-Language"),
+      "zh-TW,zh;q=0.9",
+    )
+    assert.equal(rates[0]?.spotBuy, 31)
+    assert.equal(rates[0]?.cashSell, 33)
+  })
+
   test("isolates failures while fetching selected banks concurrently", async () => {
     const failures: string[] = []
     const mockFetch = vi.fn(async (input: string | URL | Request) => {

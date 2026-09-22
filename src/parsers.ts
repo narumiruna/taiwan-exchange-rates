@@ -345,13 +345,14 @@ export function parseFirstBankRates(html: string, fetchedAt = new Date()): Rate[
       .toArray()
       .map((cell) => $(cell).text().trim())
     if (cells.length < 4) return
-    const source = extractParenthesizedCurrency(cells[0] ?? "")
+    const source = extractParenthesizedCurrency(cells[0] ?? "") ?? normalizeCurrencyCode(cells[0])
     if (!source) return
     const values = grouped.get(source) ?? {}
-    if (cells[1]?.includes("即期")) {
+    const rateType = cells[1]?.toLowerCase()
+    if (rateType?.includes("即期") || rateType === "spot") {
       values.spotBuy = cells[2]
       values.spotSell = cells[3]
-    } else if (cells[1]?.includes("現鈔")) {
+    } else if (rateType?.includes("現鈔") || rateType === "cash") {
       values.cashBuy = cells[2]
       values.cashSell = cells[3]
     }
