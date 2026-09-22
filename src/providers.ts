@@ -122,7 +122,12 @@ const providers: Record<Exchange, Provider> = {
   },
   FIRST_BANK: async (context) =>
     parseFirstBankRates(
-      await requestText(bankRateUrl("FIRST_BANK"), {}, context.options),
+      await requestText(
+        bankRateUrl("FIRST_BANK"),
+        { headers: { "Accept-Language": "zh-TW,zh;q=0.9", "User-Agent": userAgent } },
+        context.options,
+        true,
+      ),
       context.fetchedAt,
     ),
   LAND_BANK: async (context) =>
