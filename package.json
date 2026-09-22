@@ -1,6 +1,6 @@
 {
   "name": "taiwan-exchange-rates",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Taiwanese bank exchange-rate library and CLI",
   "type": "module",
   "license": "AGPL-3.0-only",
