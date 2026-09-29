@@ -1,5 +1,12 @@
 # taiwan-exchange-rates
 
+## 0.2.1
+
+### Patch Changes
+
+- 61ff163: Use First Bank's advanced rate board to avoid empty WAF responses on hosted runners.
+- 799e2dd: Upgrade Vite test tooling and run development checks on Node.js 26 while retaining packed-package verification on the minimum supported Node.js 20.18.1.
+
 ## 0.2.0
 
 ### Minor Changes
